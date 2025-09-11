@@ -53,14 +53,14 @@ class VirtualIcon:
         # Draw icon background with transparency effect
         overlay = frame.copy()
         cv2.rectangle(overlay, (self.x, self.y), 
-                     (self.x + self.width, self.y + self.height), 
-                     (50, 50, 50), -1)
+                      (self.x + self.width, self.y + self.height), 
+                      (50, 50, 50), -1)
         cv2.addWeighted(frame, 0.7, overlay, 0.3, 0, frame)
         
         # Draw border
         cv2.rectangle(frame, (self.x, self.y), 
-                     (self.x + self.width, self.y + self.height), 
-                     color, thickness)
+                      (self.x + self.width, self.y + self.height), 
+                      color, thickness)
         
         center_x = self.x + self.width // 2
         center_y = self.y + self.height // 2
@@ -68,24 +68,24 @@ class VirtualIcon:
         if self.icon_type == "brush":
             cv2.circle(frame, (center_x, center_y - 10), 8, color, 2)
             cv2.line(frame, (center_x, center_y + 2), 
-                    (center_x, center_y + 15), color, 3)
+                     (center_x, center_y + 15), color, 3)
         
         elif self.icon_type == "background":
             cv2.rectangle(frame, (center_x - 12, center_y - 8), 
-                         (center_x + 12, center_y + 8), color, 2)
+                          (center_x + 12, center_y + 8), color, 2)
             cv2.circle(frame, (center_x - 6, center_y - 3), 3, color, -1)
             cv2.line(frame, (center_x - 8, center_y + 5), 
-                    (center_x + 8, center_y - 2), color, 2)
+                     (center_x + 8, center_y - 2), color, 2)
         
         elif self.icon_type == "opacity_up":
             cv2.line(frame, (center_x - 8, center_y), 
-                    (center_x + 8, center_y), color, 3)
+                     (center_x + 8, center_y), color, 3)
             cv2.line(frame, (center_x, center_y - 8), 
-                    (center_x, center_y + 8), color, 3)
+                     (center_x, center_y + 8), color, 3)
         
         elif self.icon_type == "opacity_down":
             cv2.line(frame, (center_x - 8, center_y), 
-                    (center_x + 8, center_y), color, 3)
+                     (center_x + 8, center_y), color, 3)
         
         elif self.icon_type == "kaleidoscope":
             points = []
@@ -100,21 +100,21 @@ class VirtualIcon:
         
         elif self.icon_type == "clear":
             cv2.rectangle(frame, (center_x - 8, center_y - 6), 
-                         (center_x + 8, center_y + 8), color, 2)
+                          (center_x + 8, center_y + 8), color, 2)
             cv2.line(frame, (center_x - 6, center_y - 10), 
-                    (center_x + 6, center_y - 10), color, 2)
+                     (center_x + 6, center_y - 10), color, 2)
             cv2.line(frame, (center_x - 2, center_y - 2), 
-                    (center_x - 2, center_y + 4), color, 1)
+                     (center_x - 2, center_y + 4), color, 1)
             cv2.line(frame, (center_x + 2, center_y - 2), 
-                    (center_x + 2, center_y + 4), color, 1)
+                     (center_x + 2, center_y + 4), color, 1)
         
         elif self.icon_type == "save":
             cv2.rectangle(frame, (center_x - 10, center_y - 8), 
-                         (center_x + 10, center_y + 8), color, 2)
+                          (center_x + 10, center_y + 8), color, 2)
             cv2.rectangle(frame, (center_x - 8, center_y - 8), 
-                         (center_x + 4, center_y - 4), color, 1)
+                          (center_x + 4, center_y - 4), color, 1)
             cv2.rectangle(frame, (center_x - 6, center_y - 2), 
-                         (center_x + 6, center_y + 6), color, -1)
+                          (center_x + 6, center_y + 6), color, -1)
         
         elif self.icon_type == "record":
             if is_touching:
@@ -125,15 +125,17 @@ class VirtualIcon:
         if is_touching and touch_progress > 0:
             progress_width = int(self.width * touch_progress)
             cv2.rectangle(frame, (self.x, self.y + self.height + 2), 
-                         (self.x + progress_width, self.y + self.height + 6), 
-                         (0, 255, 0), -1)
+                          (self.x + progress_width, self.y + self.height + 6), 
+                          (0, 255, 0), -1)
         
         if self.label:
-            text_size = cv2.getTextSize(self.label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)[0]
+            # Increased font size for better accessibility
+            font_scale = 0.6
+            text_size = cv2.getTextSize(self.label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
             text_x = self.x + (self.width - text_size[0]) // 2
-            text_y = self.y + self.height + 15 # Adjusted text position for clarity
+            text_y = self.y + self.height + 25 # Adjusted text position for clarity
             cv2.putText(frame, self.label, (text_x, text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2) # Increased font thickness
 
 class AdvancedKineticCanvas:
     def __init__(self):
@@ -461,7 +463,7 @@ class AdvancedKineticCanvas:
                         print("Voice command: Clear")
                     elif "kaleidoscope" in command:
                         self.kaleidoscope_mode = not self.kaleidoscope_mode
-                        print(f"Voice command: Kaleidoscope {'ON' if self.kaleidscope_mode else 'OFF'}")
+                        print(f"Voice command: Kaleidoscope {'ON' if self.kaleidoscope_mode else 'OFF'}")
                     elif "save" in command:
                         self.save_image()
                         print("Voice command: Save")
@@ -478,12 +480,15 @@ class AdvancedKineticCanvas:
                 continue
     
     def get_dynamic_color(self, finger_name):
-        """Get color based on current pitch with finger variation"""
+        """Get color based on current pitch with finger variation.
+        Adjusted for darker, more saturated colors."""
         base_hue = self.hue
         finger_offsets = {'thumb': 0.0, 'index': 0.1, 'middle': 0.2, 'ring': 0.3, 'pinky': 0.4}
         finger_hue = (base_hue + finger_offsets.get(finger_name, 0.0)) % 1.0
-        # Increased saturation to 1.0 for more vibrant colors
-        rgb = colorsys.hsv_to_rgb(finger_hue, 1.0, 1.0) 
+        # Increased saturation to 0.8-1.0 and decreased value to 0.6-0.8 for darker colors
+        saturation = 0.8 + 0.2 * self.current_volume / 20.0
+        value = 0.6 + 0.2 * self.current_volume / 20.0
+        rgb = colorsys.hsv_to_rgb(finger_hue, saturation, value) 
         return (int(rgb[2] * 255), int(rgb[1] * 255), int(rgb[0] * 255))
     
     def get_dynamic_brush_size(self):
@@ -592,9 +597,9 @@ class AdvancedKineticCanvas:
                 x = (x // pixel_size) * pixel_size
                 y = (y // pixel_size) * pixel_size
                 cv2.rectangle(self.drawing_canvas, 
-                            (x, y), 
-                            (x + pixel_size, y + pixel_size), 
-                            color, -1)
+                              (x, y), 
+                              (x + pixel_size, y + pixel_size), 
+                              color, -1)
     
     def apply_brush(self, start_pos, end_pos, color, velocity):
         """Apply current brush effect with specific color"""
@@ -661,8 +666,9 @@ class AdvancedKineticCanvas:
         filename = f"kinetic_art_{timestamp}.jpg"
         final_image = self.drawing_canvas.copy()
         if self.background_enabled and self.background_image is not None:
-            combined = cv2.addWeighted(self.background_image, 1 - 0.2, final_image, 0.2, 0)
-            final_image = combined
+            # Opacity is already handled in apply_background,
+            # so here we just layer the drawing over the background
+            final_image = cv2.addWeighted(self.background_image, 1 - self.background_opacity, final_image, self.background_opacity, 0)
         cv2.imwrite(filename, final_image)
         print(f"Saved: {filename}")
     
@@ -782,33 +788,33 @@ class AdvancedKineticCanvas:
         y_offset = 30
         active_count = sum(1 for tracker in self.finger_trackers.values() if tracker['drawing_mode'])
         cv2.putText(frame, f"Active Fingers: {active_count}", (10, y_offset), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if active_count > 0 else (255, 255, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if active_count > 0 else (255, 255, 255), 2)
         y_offset += 30
         cv2.putText(frame, f"Pitch: {self.current_pitch:.0f}Hz", (10, y_offset), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         y_offset += 25
         cv2.putText(frame, f"Volume: {self.current_volume:.1f}", (10, y_offset), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         y_offset += 25
         brush_name = self.brush_types[self.current_brush]
         cv2.putText(frame, f"Brush: {brush_name}", (10, y_offset), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         y_offset += 25
         if self.background_image is not None:
             bg_status = f"BG: {'ON' if self.background_enabled else 'OFF'} ({self.background_opacity:.1f})"
             cv2.putText(frame, bg_status, (10, y_offset), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
-                       (0, 255, 0) if self.background_enabled else (128, 128, 128), 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
+                        (0, 255, 0) if self.background_enabled else (128, 128, 128), 1)
         else:
             cv2.putText(frame, "BG: None loaded", (10, y_offset), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 128, 128), 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 128, 128), 1)
         if self.recording:
             cv2.circle(frame, (self.width - 50, 30), 10, (0, 0, 255), -1)
             cv2.putText(frame, "REC", (self.width - 80, 40), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         if self.kaleidoscope_mode:
             cv2.putText(frame, "KALEIDOSCOPE", (self.width - 200, 70), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
     
     def cleanup(self):
         self.audio_running = False
@@ -835,14 +841,14 @@ class AdvancedKineticCanvas:
                 
                 extended_fingers_all_hands = self.process_hands(processed_frame, hand_results)
                 
-                final_display_frame = self.drawing_canvas.copy()
+                # Apply the background and blend it with the live video feed
                 if self.background_enabled and self.background_image is not None:
-                    final_display_frame = cv2.addWeighted(final_display_frame, 1, self.background_image, 1, 0)
-                
-                final_display_frame = self.apply_kaleidoscope_effect(final_display_frame)
-                
-                blended_frame = cv2.addWeighted(processed_frame, 0.7, final_display_frame, 0.3, 0)
+                    processed_frame = self.apply_background(processed_frame)
 
+                # Now, blend the drawing canvas onto the live video feed (which may have a background)
+                final_display_frame = self.apply_kaleidoscope_effect(self.drawing_canvas)
+                blended_frame = cv2.addWeighted(processed_frame, 1.0, final_display_frame, 0.7, 0)
+                
                 self.check_icon_touches(extended_fingers_all_hands)
                 
                 self.draw_icons(blended_frame)
