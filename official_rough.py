@@ -11,82 +11,51 @@ from datetime import datetime
 import colorsys
 import math
 import random
-from tkinter import filedialog
 import tkinter as tk
+from tkinter import filedialog
 
-class VirtualIcon:
-    """Represents a virtual on-screen icon that can be activated by touch."""
-    def __init__(self, x, y, width, height, icon_type, label=""):
+class VirtualButton:
+    """Represents a virtual on-screen button that can be activated by a touch gesture."""
+    def __init__(self, x, y, width, height, icon_type, label="", margin=10, text_spacing=25):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.icon_type = icon_type
         self.label = label
-        self.is_active = False
+        self.is_touching = False
         self.touch_timer = 0
         self.activation_time = 0.5  # 500ms to activate
-        
+
     def contains_point(self, point_x, point_y):
-        """Check if a point is inside this icon"""
+        """Check if a point is inside this button."""
         if self.icon_type == "record":
-            # For a circular icon, check distance from the center
             center_x = self.x + self.width // 2
             center_y = self.y + self.height // 2
-            radius = self.width // 2 # Use half the icon width as radius
+            radius = self.width // 2
             distance = np.sqrt((point_x - center_x)**2 + (point_y - center_y)**2)
             return distance <= radius
         else:
-            # For all other icons, check rectangular area
-            return (self.x <= point_x <= self.x + self.width and 
+            return (self.x <= point_x <= self.x + self.width and
                     self.y <= point_y <= self.y + self.height)
-    
-    def draw(self, frame, is_touching=False, touch_progress=0.0):
-        """Draw the icon on the frame"""
-        if is_touching:
-            color = (0, 255, 255)  # Yellow when touched
-            thickness = 3
-        else:
-            color = (255, 255, 255)  # White normally
-            thickness = 2
-        
-        # Draw icon background with transparency effect
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (self.x, self.y), 
-                      (self.x + self.width, self.y + self.height), 
-                      (50, 50, 50), -1)
-        cv2.addWeighted(frame, 0.7, overlay, 0.3, 0, frame)
-        
-        # Draw border
-        cv2.rectangle(frame, (self.x, self.y), 
-                      (self.x + self.width, self.y + self.height), 
-                      color, thickness)
-        
+
+    def draw_icon(self, frame, color, thickness):
+        """Draws the specific icon shape inside the button rectangle."""
         center_x = self.x + self.width // 2
         center_y = self.y + self.height // 2
-        
+
         if self.icon_type == "brush":
             cv2.circle(frame, (center_x, center_y - 10), 8, color, 2)
-            cv2.line(frame, (center_x, center_y + 2), 
-                     (center_x, center_y + 15), color, 3)
-        
+            cv2.line(frame, (center_x, center_y + 2), (center_x, center_y + 15), color, 3)
         elif self.icon_type == "background":
-            cv2.rectangle(frame, (center_x - 12, center_y - 8), 
-                          (center_x + 12, center_y + 8), color, 2)
+            cv2.rectangle(frame, (center_x - 12, center_y - 8), (center_x + 12, center_y + 8), color, 2)
             cv2.circle(frame, (center_x - 6, center_y - 3), 3, color, -1)
-            cv2.line(frame, (center_x - 8, center_y + 5), 
-                     (center_x + 8, center_y - 2), color, 2)
-        
+            cv2.line(frame, (center_x - 8, center_y + 5), (center_x + 8, center_y - 2), color, 2)
         elif self.icon_type == "opacity_up":
-            cv2.line(frame, (center_x - 8, center_y), 
-                     (center_x + 8, center_y), color, 3)
-            cv2.line(frame, (center_x, center_y - 8), 
-                     (center_x, center_y + 8), color, 3)
-        
+            cv2.line(frame, (center_x - 8, center_y), (center_x + 8, center_y), color, 3)
+            cv2.line(frame, (center_x, center_y - 8), (center_x, center_y + 8), color, 3)
         elif self.icon_type == "opacity_down":
-            cv2.line(frame, (center_x - 8, center_y), 
-                     (center_x + 8, center_y), color, 3)
-        
+            cv2.line(frame, (center_x - 8, center_y), (center_x + 8, center_y), color, 3)
         elif self.icon_type == "kaleidoscope":
             points = []
             for i in range(8):
@@ -94,61 +63,67 @@ class VirtualIcon:
                 x = int(center_x + 10 * math.cos(angle))
                 y = int(center_y + 10 * math.sin(angle))
                 points.append((x, y))
-            
             for i in range(0, len(points), 2):
                 cv2.line(frame, (center_x, center_y), points[i], color, 2)
-        
         elif self.icon_type == "clear":
-            cv2.rectangle(frame, (center_x - 8, center_y - 6), 
-                          (center_x + 8, center_y + 8), color, 2)
-            cv2.line(frame, (center_x - 6, center_y - 10), 
-                     (center_x + 6, center_y - 10), color, 2)
-            cv2.line(frame, (center_x - 2, center_y - 2), 
-                     (center_x - 2, center_y + 4), color, 1)
-            cv2.line(frame, (center_x + 2, center_y - 2), 
-                     (center_x + 2, center_y + 4), color, 1)
-        
+            cv2.rectangle(frame, (center_x - 8, center_y - 6), (center_x + 8, center_y + 8), color, 2)
+            cv2.line(frame, (center_x - 6, center_y - 10), (center_x + 6, center_y - 10), color, 2)
+            cv2.line(frame, (center_x - 2, center_y - 2), (center_x - 2, center_y + 4), color, 1)
+            cv2.line(frame, (center_x + 2, center_y - 2), (center_x + 2, center_y + 4), color, 1)
         elif self.icon_type == "save":
-            cv2.rectangle(frame, (center_x - 10, center_y - 8), 
-                          (center_x + 10, center_y + 8), color, 2)
-            cv2.rectangle(frame, (center_x - 8, center_y - 8), 
-                          (center_x + 4, center_y - 4), color, 1)
-            cv2.rectangle(frame, (center_x - 6, center_y - 2), 
-                          (center_x + 6, center_y + 6), color, -1)
-        
+            cv2.rectangle(frame, (center_x - 10, center_y - 8), (center_x + 10, center_y + 8), color, 2)
+            cv2.rectangle(frame, (center_x - 8, center_y - 8), (center_x + 4, center_y - 4), color, 1)
+            cv2.rectangle(frame, (center_x - 6, center_y - 2), (center_x + 6, center_y + 6), color, -1)
         elif self.icon_type == "record":
-            if is_touching:
-                cv2.circle(frame, (center_x, center_y), 10, (0, 0, 255), -1)
-            else:
-                cv2.circle(frame, (center_x, center_y), 10, color, 2)
-        
-        if is_touching and touch_progress > 0:
+            cv2.circle(frame, (center_x, center_y), 10, (0, 0, 255) if self.is_touching else color, -1 if self.is_touching else 2)
+        elif self.icon_type == "undo":
+            cv2.line(frame, (center_x + 8, center_y - 8), (center_x - 8, center_y + 8), color, 2)
+            cv2.line(frame, (center_x - 8, center_y + 8), (center_x - 2, center_y + 2), color, 2)
+            cv2.line(frame, (center_x - 8, center_y + 8), (center_x - 2, center_y + 14), color, 2)
+            
+    def draw(self, frame, touch_progress=0.0, is_right_side=False):
+        """Draw the button on the frame with touch feedback."""
+        color = (0, 255, 255) if self.is_touching else (255, 255, 255)
+        thickness = 3 if self.is_touching else 2
+
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (self.x, self.y), (self.x + self.width, self.y + self.height), (50, 50, 50), -1)
+        cv2.addWeighted(frame, 0.7, overlay, 0.3, 0, frame)
+
+        cv2.rectangle(frame, (self.x, self.y), (self.x + self.width, self.y + self.height), color, thickness)
+
+        self.draw_icon(frame, color, thickness)
+
+        if self.is_touching and touch_progress > 0:
             progress_width = int(self.width * touch_progress)
-            cv2.rectangle(frame, (self.x, self.y + self.height + 2), 
-                          (self.x + progress_width, self.y + self.height + 6), 
+            cv2.rectangle(frame, (self.x, self.y + self.height + 2),
+                          (self.x + progress_width, self.y + self.height + 6),
                           (0, 255, 0), -1)
-        
+
         if self.label:
-            # Increased font size for better accessibility
             font_scale = 0.6
             text_size = cv2.getTextSize(self.label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
-            text_x = self.x + (self.width - text_size[0]) // 2
-            text_y = self.y + self.height + 25 # Adjusted text position for clarity
-            cv2.putText(frame, self.label, (text_x, text_y), 
-                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2) # Increased font thickness
+            if is_right_side:
+                text_x = self.x - text_size[0] - 15  # Position text to the left of the button
+            else:
+                text_x = self.x + self.width + 15  # Position text to the right of the button
+            text_y = self.y + self.height // 2 + 5
+            cv2.putText(frame, self.label, (text_x, text_y),
+                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
 
 class AdvancedKineticCanvas:
+    """A kinetic art application with multi-finger drawing, audio reactivity, and virtual buttons."""
     def __init__(self):
         self.mp_hands = mp.solutions.hands
         self.mp_pose = mp.solutions.pose
-        
+
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
             min_detection_confidence=0.7,
             min_tracking_confidence=0.5
         )
-        
+
         self.pose = self.mp_pose.Pose(
             static_image_mode=False,
             model_complexity=1,
@@ -156,239 +131,249 @@ class AdvancedKineticCanvas:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
-        
+
         self.cap = cv2.VideoCapture(0)
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
+        self.window_name = 'Multi-Finger Kinetic Canvas with Background'
+        self.is_fullscreen = False
+
         self.background_image = None
         self.original_background = None
         self.background_enabled = False
-        self.background_opacity = 0.8
-        
+        self.background_opacity = 0.5
+
         self.canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         self.drawing_canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         self.body_canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        
+
         self.finger_trackers = {}
-        self.drawing_threshold = 1.0  # Reduced activation time for better responsiveness
-        
+        self.drawing_threshold = 1.0
+
         self.finger_tips = {
-            'thumb': 4,
-            'index': 8,
-            'middle': 12,
-            'ring': 16,
-            'pinky': 20
+            'thumb': 4, 'index': 8, 'middle': 12, 'ring': 16, 'pinky': 20
         }
-        
         self.finger_mcps = {
-            'thumb': 3,
-            'index': 5,
-            'middle': 9,
-            'ring': 13,
-            'pinky': 17
+            'thumb': 3, 'index': 5, 'middle': 9, 'ring': 13, 'pinky': 17
         }
-        
-        self.icons = []
-        self.setup_virtual_icons()
-        self.icon_touch_tracker = {}
-        
+
+        self.left_buttons = []
+        self.right_buttons = []
+        self.setup_virtual_buttons()
+        self.button_touch_tracker = {}
+
         self.canvas_history = deque(maxlen=20)
-        self.swipe_detection = {'left': False, 'start_x': None, 'frames': 0}
-        
+
         self.audio_thread = None
         self.current_pitch = 0
         self.current_volume = 0
         self.audio_running = True
-        
+
         self.voice_thread = None
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
-        
+
         self.brush_types = ['neon', 'fire', 'smoke', 'watercolor', 'pixelated']
         self.current_brush = 0
         self.brush_size_base = 5
-        
+
         self.kaleidoscope_mode = False
         self.kaleidoscope_segments = 8
-        
+
         self.video_writer = None
         self.recording = False
         self.recording_frames = []
-        
+
         self.hue = 0.0
         
-        print("Advanced Multi-Finger Kinetic Canvas with Virtual Touch Icons Initialized!")
+        # Pinch-to-zoom feature variables
+        self.pinch_start_size = None
+        self.pinch_start_distance = None
+
+        print("Advanced Multi-Finger Kinetic Canvas with Virtual Buttons Initialized!")
         print("Features:")
-        print("- Paint with multiple open fingers simultaneously")
-        print("- Touch virtual icons to control features")
+        print("- Paint with a single hand (right)")
+        print("- Pinch with the other hand (left) to change brush size")
+        print("- Touch virtual buttons to control features")
         print("- Voice commands: 'Clear', 'Save', 'Kaleidoscope'")
-        print("- Swipe left to undo")
         print("- Press 'q' to quit")
-        
+        print("- Press 'f' to toggle fullscreen")
+
         self.init_audio()
         self.init_voice_recognition()
-    
-    def setup_virtual_icons(self):
-        """Setup virtual touchable icons"""
-        icon_size = 50
+
+    def setup_virtual_buttons(self):
+        """Setup virtual touchable buttons on both the left and right sides of the screen."""
+        button_size = 50
         margin = 10
-        text_spacing = 25 # Increased vertical spacing for icon labels
-        start_x = self.width - icon_size - margin
-        
-        icons_config = [
+        text_spacing = 65
+
+        # Left-side buttons
+        left_buttons_config = [
             ("brush", "Brush", 0),
-            ("background", "BG Image", 1),
+            ("background", "Load BG", 1),
             ("opacity_up", "Opacity +", 2),
-            ("opacity_down", "Opacity -", 3),
-            ("kaleidoscope", "Kaleid", 4),
-            ("clear", "Clear", 5),
-            ("save", "Save", 6),
-            ("record", "Record", 7)
+            ("opacity_down", "Opacity -", 3)
         ]
-        
-        for icon_type, label, index in icons_config:
-            y_pos = margin + index * (icon_size + text_spacing)
-            icon = VirtualIcon(start_x, y_pos, icon_size, icon_size, icon_type, label)
-            self.icons.append(icon)
-    
-    def check_icon_touches(self, extended_fingers_all_hands):
-        """Check if any extended fingers are touching icons"""
+        start_x_left = margin
+        for icon_type, label, index in left_buttons_config:
+            y_pos = margin + index * text_spacing
+            button = VirtualButton(start_x_left, y_pos, button_size, button_size, icon_type, label)
+            self.left_buttons.append(button)
+
+        # Right-side buttons
+        right_buttons_config = [
+            ("kaleidoscope", "Kaleid", 0),
+            ("clear", "Clear", 1),
+            ("save", "Save", 2),
+            ("record", "Record", 3),
+            ("undo", "Undo", 4)
+        ]
+        start_x_right = self.width - button_size - margin
+        for icon_type, label, index in right_buttons_config:
+            y_pos = margin + index * text_spacing
+            button = VirtualButton(start_x_right, y_pos, button_size, button_size, icon_type, label)
+            self.right_buttons.append(button)
+
+    def check_button_touches(self, extended_fingers_all_hands):
+        """Check if any extended fingers are touching buttons and activate them."""
         current_time = time.time()
-        
         all_finger_positions = [finger['pos'] for finger in extended_fingers_all_hands.values()]
-        
-        for icon in self.icons:
-            is_being_touched = False
-            for finger_pos in all_finger_positions:
-                if icon.contains_point(finger_pos[0], finger_pos[1]):
-                    is_being_touched = True
-                    break
-            
-            icon_id = f"{icon.icon_type}_{icon.x}_{icon.y}"
-            
+
+        all_buttons = self.left_buttons + self.right_buttons
+        for button in all_buttons:
+            is_being_touched = any(button.contains_point(fp[0], fp[1]) for fp in all_finger_positions)
+            button_id = f"{button.icon_type}{button.x}{button.y}"
+
             if is_being_touched:
-                if icon_id not in self.icon_touch_tracker:
-                    self.icon_touch_tracker[icon_id] = current_time
+                if not button.is_touching:
+                    button.touch_timer = current_time
+                button.is_touching = True
                 
-                touch_duration = current_time - self.icon_touch_tracker[icon_id]
-                
-                if touch_duration >= icon.activation_time:
-                    if not icon.is_active:
-                        self.activate_icon(icon)
-                        icon.is_active = True
+                touch_duration = current_time - button.touch_timer
+                if touch_duration >= button.activation_time:
+                    self.activate_button(button)
+                    button.touch_timer = current_time
             else:
-                if icon_id in self.icon_touch_tracker:
-                    del self.icon_touch_tracker[icon_id]
-                icon.is_active = False
-    
-    def activate_icon(self, icon):
-        """Activate an icon's function"""
-        print(f"Icon activated: {icon.icon_type}")
-        
-        if icon.icon_type == "brush":
+                button.is_touching = False
+
+    def activate_button(self, button):
+        """Activate a button's function."""
+        print(f"Button activated: {button.icon_type}")
+
+        if button.icon_type == "brush":
             self.current_brush = (self.current_brush + 1) % len(self.brush_types)
             print(f"Brush changed to: {self.brush_types[self.current_brush]}")
-        
-        elif icon.icon_type == "background":
-            self.load_background_image()
-        
-        elif icon.icon_type == "opacity_up":
+        elif button.icon_type == "background":
+            if self.background_image is not None:
+                if self.background_enabled:
+                    self.background_enabled = False
+                    print("Background turned off. Click again to load a new one.")
+                else:
+                    self.load_background_image_dialog()
+            else:
+                self.load_background_image_dialog()
+                
+        elif button.icon_type == "opacity_up":
             self.adjust_background_opacity(0.1)
-        
-        elif icon.icon_type == "opacity_down":
+        elif button.icon_type == "opacity_down":
             self.adjust_background_opacity(-0.1)
-        
-        elif icon.icon_type == "kaleidoscope":
+        elif button.icon_type == "kaleidoscope":
             self.kaleidoscope_mode = not self.kaleidoscope_mode
             print(f"Kaleidoscope: {'ON' if self.kaleidoscope_mode else 'OFF'}")
-        
-        elif icon.icon_type == "clear":
+        elif button.icon_type == "clear":
             self.clear_canvas()
             print("Canvas cleared!")
-        
-        elif icon.icon_type == "save":
+        elif button.icon_type == "save":
             self.save_image()
-        
-        elif icon.icon_type == "record":
+        elif button.icon_type == "record":
             if self.recording:
                 self.stop_video_recording()
             else:
                 self.start_video_recording()
-    
-    def draw_icons(self, frame):
-        """Draw all virtual icons with touch feedback"""
+        elif button.icon_type == "undo":
+            self.undo_last_stroke()
+
+    def draw_buttons(self, frame):
+        """Draw all virtual buttons with touch feedback."""
         current_time = time.time()
-        
-        for icon in self.icons:
-            icon_id = f"{icon.icon_type}_{icon.x}_{icon.y}"
-            is_touching = icon_id in self.icon_touch_tracker
-            
+        for button in self.left_buttons:
             touch_progress = 0.0
-            if is_touching:
-                touch_duration = current_time - self.icon_touch_tracker[icon_id]
-                touch_progress = min(1.0, touch_duration / icon.activation_time)
-            
-            icon.draw(frame, is_touching, touch_progress)
-    
-    def load_background_image(self):
-        """Load background image using file dialog"""
+            if button.is_touching:
+                touch_duration = current_time - button.touch_timer
+                touch_progress = min(1.0, touch_duration / button.activation_time)
+            button.draw(frame, touch_progress, is_right_side=False)
+
+        for button in self.right_buttons:
+            touch_progress = 0.0
+            if button.is_touching:
+                touch_duration = current_time - button.touch_timer
+                touch_progress = min(1.0, touch_duration / button.activation_time)
+            button.draw(frame, touch_progress, is_right_side=True)
+
+    def load_background_image_dialog(self):
+        """Open a file dialog to load a background image."""
         try:
             root = tk.Tk()
             root.withdraw()
             file_path = filedialog.askopenfilename(
                 title="Select Background Image",
-                filetypes=[
-                    ("Image files", "*.png *.jpg *.jpeg *.bmp *.tiff *.tif"),
-                    ("All files", "*.*")
-                ]
+                filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.tiff *.tif")]
             )
             root.destroy()
             if file_path:
-                img = cv2.imread(file_path)
-                if img is not None:
-                    self.original_background = cv2.resize(img, (self.width, self.height))
-                    self.background_image = self.original_background.copy()
-                    self.background_enabled = True
-                    print(f"Background loaded: {os.path.basename(file_path)}")
-                    return True
-                else:
-                    print("Error: Could not load image file")
-                    return False
+                self.load_background_image(file_path)
+        except Exception as e:
+            print(f"Error opening file dialog: {e}")
+
+    def load_background_image(self, file_path):
+        """Load background image from a specified path."""
+        try:
+            img = cv2.imread(file_path)
+            if img is not None:
+                self.original_background = cv2.resize(img, (self.width, self.height))
+                self.background_image = self.original_background.copy()
+                self.background_enabled = True
+                print(f"Background loaded: {os.path.basename(file_path)}")
+                return True
             else:
-                print("No image selected")
+                print("Error: Could not load image file")
                 return False
         except Exception as e:
             print(f"Error loading background image: {e}")
             return False
-    
+
     def adjust_background_opacity(self, delta):
-        """Adjust background image opacity"""
+        """Adjust background image opacity."""
         if self.background_enabled and self.original_background is not None:
             self.background_opacity = max(0.0, min(1.0, self.background_opacity + delta))
             print(f"Background opacity: {self.background_opacity:.2f}")
-    
+
     def apply_background(self, frame):
-        """Apply background image to the frame"""
+        """Apply background image to the frame with transparency."""
         if not self.background_enabled or self.background_image is None:
             return frame
-        
-        background_weighted = cv2.addWeighted(
-            self.background_image, self.background_opacity,
-            np.zeros_like(self.background_image), 1 - self.background_opacity, 0
-        )
+
+        result = frame.copy()
         
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pose_results = self.pose.process(rgb_frame)
         
         if pose_results.segmentation_mask is not None:
             mask = pose_results.segmentation_mask > 0.5
+            
+            blended_background = cv2.addWeighted(
+                self.background_image, self.background_opacity,
+                frame, 1 - self.background_opacity, 0)
+            
             mask_3d = np.stack([mask] * 3, axis=-1)
-            result = np.where(mask_3d, frame, background_weighted)
-            return result.astype(np.uint8)
+            result = np.where(mask_3d, frame, blended_background)
         else:
-            return cv2.addWeighted(frame, 0.7, background_weighted, 0.3, 0)
-    
+            result = cv2.addWeighted(self.background_image, self.background_opacity, frame, 1 - self.background_opacity, 0)
+            
+        return result.astype(np.uint8)
+
     def init_audio(self):
         """Initialize audio processing for pitch and volume detection"""
         try:
@@ -398,7 +383,7 @@ class AdvancedKineticCanvas:
             self.audio_thread.start()
         except Exception as e:
             print(f"Audio initialization failed: {e}")
-    
+
     def audio_processing_loop(self):
         """Process audio for pitch and volume"""
         try:
@@ -424,7 +409,7 @@ class AdvancedKineticCanvas:
             stream.close()
         except Exception as e:
             print(f"Audio processing error: {e}")
-    
+
     def detect_pitch(self, audio_data, sample_rate):
         """Simple pitch detection using autocorrelation"""
         windowed = audio_data * np.hanning(len(audio_data))
@@ -449,7 +434,7 @@ class AdvancedKineticCanvas:
             self.voice_thread.start()
         except Exception as e:
             print(f"Voice recognition initialization failed: {e}")
-    
+
     def voice_recognition_loop(self):
         """Listen for voice commands"""
         while self.audio_running:
@@ -478,21 +463,22 @@ class AdvancedKineticCanvas:
                 pass
             except Exception as e:
                 continue
-    
+
     def get_dynamic_color(self, finger_name):
         """Get color based on current pitch with finger variation.
-        Adjusted for darker, more saturated colors."""
+        Adjusted for a richer, more vibrant brush color."""
         base_hue = self.hue
         finger_offsets = {'thumb': 0.0, 'index': 0.1, 'middle': 0.2, 'ring': 0.3, 'pinky': 0.4}
         finger_hue = (base_hue + finger_offsets.get(finger_name, 0.0)) % 1.0
-        # Increased saturation to 0.8-1.0 and decreased value to 0.6-0.8 for darker colors
-        saturation = 0.8 + 0.2 * self.current_volume / 20.0
-        value = 0.6 + 0.2 * self.current_volume / 20.0
-        rgb = colorsys.hsv_to_rgb(finger_hue, saturation, value) 
+        
+        s = 0.95
+        v = 0.95 
+        
+        rgb = colorsys.hsv_to_rgb(finger_hue, s, v) 
         return (int(rgb[2] * 255), int(rgb[1] * 255), int(rgb[0] * 255))
     
     def get_dynamic_brush_size(self):
-        """Get brush size based on volume"""
+        """Get brush size based on volume or pinch gesture."""
         volume_factor = min(self.current_volume / 20.0, 3.0)
         return int(self.brush_size_base * (0.5 + volume_factor))
     
@@ -525,7 +511,7 @@ class AdvancedKineticCanvas:
                 y = int(tip.y * self.height)
                 extended_fingers[finger_name] = (x, y)
         return extended_fingers
-    
+
     def calculate_velocity(self, finger_id, current_pos):
         """Calculate finger movement velocity"""
         if finger_id not in self.finger_trackers:
@@ -539,6 +525,26 @@ class AdvancedKineticCanvas:
         velocities.append(distance)
         return np.mean(list(velocities)) if velocities else 0
     
+    def apply_brush(self, start_pos, end_pos, color, velocity):
+        """Apply current brush effect with specific color"""
+        size = self.brush_size_base
+        if self.current_volume > 0:
+            volume_factor = min(self.current_volume / 20.0, 3.0)
+            size = int(self.brush_size_base * (0.5 + volume_factor))
+        
+        brush_name = self.brush_types[self.current_brush]
+        
+        if brush_name == 'neon':
+            self.draw_neon_brush(start_pos, end_pos, color, size, velocity)
+        elif brush_name == 'fire':
+            self.draw_fire_brush(start_pos, end_pos, color, size, velocity)
+        elif brush_name == 'smoke':
+            self.draw_smoke_brush(start_pos, end_pos, color, size, velocity)
+        elif brush_name == 'watercolor':
+            self.draw_watercolor_brush(start_pos, end_pos, color, size, velocity)
+        elif brush_name == 'pixelated':
+            self.draw_pixelated_brush(start_pos, end_pos, color, size, velocity)
+
     def draw_neon_brush(self, start_pos, end_pos, color, size, velocity):
         cv2.line(self.drawing_canvas, start_pos, end_pos, color, size, cv2.LINE_AA)
         glow_color = tuple(int(c * 0.6) for c in color)
@@ -559,14 +565,14 @@ class AdvancedKineticCanvas:
     
     def draw_smoke_brush(self, start_pos, end_pos, color, size, velocity):
         smoke_color = (128, 128, 128)
-        overlay = self.drawing_canvas.copy()
+        overlay = np.zeros_like(self.drawing_canvas)
         cv2.line(overlay, start_pos, end_pos, smoke_color, size + 2, cv2.LINE_AA)
         for i in range(3):
             offset = random.randint(-size//2, size//2)
             wispy_start = (start_pos[0] + offset, start_pos[1] + offset)
             wispy_end = (end_pos[0] + offset, end_pos[1] + offset)
             cv2.line(overlay, wispy_start, wispy_end, smoke_color, 1, cv2.LINE_AA)
-        cv2.addWeighted(self.drawing_canvas, 0.7, overlay, 0.3, 0, self.drawing_canvas)
+        cv2.addWeighted(self.drawing_canvas, 1.0, overlay, 0.3, 0, self.drawing_canvas)
     
     def draw_watercolor_brush(self, start_pos, end_pos, color, size, velocity):
         if velocity > 15:
@@ -580,15 +586,15 @@ class AdvancedKineticCanvas:
                 varied_color = tuple(max(0, min(255, c + random.randint(-30, 30))) for c in color)
                 cv2.circle(self.drawing_canvas, (drop_x, drop_y), drop_size, varied_color, -1)
         else:
-            overlay = self.drawing_canvas.copy()
+            overlay = np.zeros_like(self.drawing_canvas)
             cv2.line(overlay, start_pos, end_pos, color, size, cv2.LINE_AA)
-            cv2.addWeighted(self.drawing_canvas, 0.8, overlay, 0.2, 0, self.drawing_canvas)
+            self.drawing_canvas = cv2.addWeighted(self.drawing_canvas, 1.0, overlay, 0.2, 0)
     
     def draw_pixelated_brush(self, start_pos, end_pos, color, size, velocity):
         pixel_size = max(2, size // 2)
         dx = end_pos[0] - start_pos[0]
         dy = end_pos[1] - start_pos[1]
-        distance = int(np.sqrt(dx*dx + dy*dy))
+        distance = int(np.sqrt(dx**2 + dy**2))
         if distance > 0:
             for i in range(0, distance, pixel_size):
                 t = i / distance
@@ -596,26 +602,11 @@ class AdvancedKineticCanvas:
                 y = int(start_pos[1] + t * dy)
                 x = (x // pixel_size) * pixel_size
                 y = (y // pixel_size) * pixel_size
-                cv2.rectangle(self.drawing_canvas, 
-                              (x, y), 
-                              (x + pixel_size, y + pixel_size), 
+                cv2.rectangle(self.drawing_canvas,
+                              (x, y),
+                              (x + pixel_size, y + pixel_size),
                               color, -1)
-    
-    def apply_brush(self, start_pos, end_pos, color, velocity):
-        """Apply current brush effect with specific color"""
-        size = self.get_dynamic_brush_size()
-        brush_name = self.brush_types[self.current_brush]
-        if brush_name == 'neon':
-            self.draw_neon_brush(start_pos, end_pos, color, size, velocity)
-        elif brush_name == 'fire':
-            self.draw_fire_brush(start_pos, end_pos, color, size, velocity)
-        elif brush_name == 'smoke':
-            self.draw_smoke_brush(start_pos, end_pos, color, size, velocity)
-        elif brush_name == 'watercolor':
-            self.draw_watercolor_brush(start_pos, end_pos, color, size, velocity)
-        elif brush_name == 'pixelated':
-            self.draw_pixelated_brush(start_pos, end_pos, color, size, velocity)
-    
+
     def undo_last_stroke(self):
         """Undo the last drawing stroke"""
         if self.canvas_history:
@@ -636,7 +627,7 @@ class AdvancedKineticCanvas:
             angle = (360 / self.kaleidoscope_segments) * i
             M = cv2.getRotationMatrix2D(center, angle, 1)
             rotated = cv2.warpAffine(canvas, M, (self.width, self.height))
-            result = cv2.addWeighted(result, 0.8, rotated, 0.2, 0)
+            result = cv2.add(result, rotated)
         return result
     
     def draw_kaleidoscope_brush(self, start_pos, end_pos, color, velocity):
@@ -666,9 +657,7 @@ class AdvancedKineticCanvas:
         filename = f"kinetic_art_{timestamp}.jpg"
         final_image = self.drawing_canvas.copy()
         if self.background_enabled and self.background_image is not None:
-            # Opacity is already handled in apply_background,
-            # so here we just layer the drawing over the background
-            final_image = cv2.addWeighted(self.background_image, 1 - self.background_opacity, final_image, self.background_opacity, 0)
+            final_image = cv2.addWeighted(self.background_image, 1 - 0.2, final_image, 0.2, 0)
         cv2.imwrite(filename, final_image)
         print(f"Saved: {filename}")
     
@@ -695,24 +684,68 @@ class AdvancedKineticCanvas:
         self.drawing_canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         self.canvas_history.clear()
         self.finger_trackers.clear()
-    
+
+    def pinch_to_zoom(self, thumb_pos, index_pos):
+        """Adjusts brush size based on the distance between thumb and index finger."""
+        current_distance = np.sqrt((thumb_pos[0] - index_pos[0])**2 + (thumb_pos[1] - index_pos[1])**2)
+        
+        if self.pinch_start_distance is None:
+            self.pinch_start_distance = current_distance
+            self.pinch_start_size = self.brush_size_base
+            return
+
+        if self.pinch_start_distance > 0:
+            scale_factor = current_distance / self.pinch_start_distance
+            new_size = int(self.pinch_start_size * scale_factor)
+            self.brush_size_base = max(1, min(50, new_size))
+            
     def process_hands(self, frame, hand_results):
-        """Process hand detection and multi-finger drawing"""
+        """Process hand detection and control drawing/zooming based on hand position."""
         current_time = time.time()
         current_extended_fingers = {}
         
         if hand_results.multi_hand_landmarks:
-            for hand_idx, hand_landmarks in enumerate(hand_results.multi_hand_landmarks):
-                extended_fingers = self.get_extended_fingers(hand_landmarks)
-                for finger_name, pos in extended_fingers.items():
-                    finger_id = f"{hand_idx}_{finger_name}"
-                    current_extended_fingers[finger_id] = {'pos': pos, 'name': finger_name}
-                if hand_idx == 0:
-                    self.detect_swipe_left(hand_landmarks)
+            for hand_landmarks in hand_results.multi_hand_landmarks:
+                hand_wrist = hand_landmarks.landmark[self.mp_hands.HandLandmark.WRIST]
+                
+                # Determine which hand is which based on X-coordinate
+                if hand_wrist.x * self.width > self.width / 2:
+                    hand_label = 'right'
+                else:
+                    hand_label = 'left'
+                
+                # Process pinch-to-zoom with the left hand
+                if hand_label == 'left':
+                    thumb_tip = hand_landmarks.landmark[self.finger_tips['thumb']]
+                    index_tip = hand_landmarks.landmark[self.finger_tips['index']]
+                    
+                    thumb_pos = (int(thumb_tip.x * self.width), int(thumb_tip.y * self.height))
+                    index_pos = (int(index_tip.x * self.width), int(index_tip.y * self.height))
+                    
+                    is_pinching = self.is_finger_extended(hand_landmarks, 'thumb') and \
+                                  self.is_finger_extended(hand_landmarks, 'index') and \
+                                  not self.is_finger_extended(hand_landmarks, 'middle') and \
+                                  not self.is_finger_extended(hand_landmarks, 'ring') and \
+                                  not self.is_finger_extended(hand_landmarks, 'pinky')
 
+                    if is_pinching:
+                        self.pinch_to_zoom(thumb_pos, index_pos)
+                    else:
+                        self.pinch_start_distance = None
+                        self.pinch_start_size = None
+                
+                # Process drawing with the right hand
+                elif hand_label == 'right':
+                    extended_fingers = self.get_extended_fingers(hand_landmarks)
+                    for finger_name, pos in extended_fingers.items():
+                        finger_id = f"right_{finger_name}"
+                        current_extended_fingers[finger_id] = {'pos': pos, 'name': finger_name}
+
+        # Main drawing loop, now only processes right hand's extended fingers
         for finger_id, finger_data in current_extended_fingers.items():
             finger_pos = finger_data['pos']
             finger_name = finger_data['name']
+            
             if finger_id not in self.finger_trackers:
                 self.finger_trackers[finger_id] = {
                     'positions': deque(maxlen=20),
@@ -724,11 +757,13 @@ class AdvancedKineticCanvas:
             tracker = self.finger_trackers[finger_id]
             tracker['positions'].append(finger_pos)
             time_held = current_time - tracker['start_time']
+            
             if time_held >= self.drawing_threshold and not tracker['drawing_mode']:
                 tracker['drawing_mode'] = True
                 tracker['last_pos'] = finger_pos
                 self.save_canvas_state()
                 print(f"Drawing mode activated for {finger_name}!")
+            
             if tracker['drawing_mode']:
                 velocity = self.calculate_velocity(finger_id, finger_pos)
                 if tracker['last_pos']:
@@ -740,16 +775,16 @@ class AdvancedKineticCanvas:
                 tracker['last_pos'] = finger_pos
                 color = self.get_dynamic_color(finger_name)
                 cv2.circle(frame, finger_pos, 12, color, 3)
-                cv2.putText(frame, finger_name[:1].upper(), 
-                           (finger_pos[0] - 10, finger_pos[1] - 20),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                cv2.putText(frame, finger_name[:1].upper(),
+                            (finger_pos[0] - 10, finger_pos[1] - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
             else:
                 progress = time_held / self.drawing_threshold
                 circle_size = int(8 + 8 * progress)
                 cv2.circle(frame, finger_pos, circle_size, (0, 255, 0), 2)
-                cv2.putText(frame, finger_name[:1].upper(), 
-                           (finger_pos[0] - 10, finger_pos[1] - 20),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+                cv2.putText(frame, finger_name[:1].upper(),
+                            (finger_pos[0] - 10, finger_pos[1] - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
         
         fingers_to_remove = []
         for finger_id, tracker in self.finger_trackers.items():
@@ -763,59 +798,49 @@ class AdvancedKineticCanvas:
         
         return current_extended_fingers
     
-    def detect_swipe_left(self, hand_landmarks):
-        """Detect left swipe gesture for undo"""
-        if hand_landmarks:
-            wrist = hand_landmarks.landmark[0]
-            wrist_x = int(wrist.x * self.width)
-            if self.swipe_detection['start_x'] is None:
-                self.swipe_detection['start_x'] = wrist_x
-                self.swipe_detection['frames'] = 0
-            else:
-                dx = wrist_x - self.swipe_detection['start_x']
-                self.swipe_detection['frames'] += 1
-                if dx < -100 and self.swipe_detection['frames'] < 30:
-                    self.undo_last_stroke()
-                    self.swipe_detection['start_x'] = None
-                    return True
-                elif self.swipe_detection['frames'] > 30:
-                    self.swipe_detection['start_x'] = wrist_x
-                    self.swipe_detection['frames'] = 0
-        return False
-    
     def draw_ui(self, frame):
-        """Draw UI information"""
-        y_offset = 30
-        active_count = sum(1 for tracker in self.finger_trackers.values() if tracker['drawing_mode'])
-        cv2.putText(frame, f"Active Fingers: {active_count}", (10, y_offset), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if active_count > 0 else (255, 255, 255), 2)
-        y_offset += 30
-        cv2.putText(frame, f"Pitch: {self.current_pitch:.0f}Hz", (10, y_offset), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        y_offset += 25
-        cv2.putText(frame, f"Volume: {self.current_volume:.1f}", (10, y_offset), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        y_offset += 25
-        brush_name = self.brush_types[self.current_brush]
-        cv2.putText(frame, f"Brush: {brush_name}", (10, y_offset), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        y_offset += 25
-        if self.background_image is not None:
-            bg_status = f"BG: {'ON' if self.background_enabled else 'OFF'} ({self.background_opacity:.1f})"
-            cv2.putText(frame, bg_status, (10, y_offset), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
-                        (0, 255, 0) if self.background_enabled else (128, 128, 128), 1)
-        else:
-            cv2.putText(frame, "BG: None loaded", (10, y_offset), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 128, 128), 1)
+        """Draw UI information at the top and bottom of the screen."""
+        
+        # UI at the top (Recording, Kaleidoscope)
         if self.recording:
             cv2.circle(frame, (self.width - 50, 30), 10, (0, 0, 255), -1)
-            cv2.putText(frame, "REC", (self.width - 80, 40), 
+            cv2.putText(frame, "REC", (self.width - 80, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         if self.kaleidoscope_mode:
-            cv2.putText(frame, "KALEIDOSCOPE", (self.width - 200, 70), 
+            cv2.putText(frame, "KALEIDOSCOPE", (self.width - 200, 70),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
-    
+        
+        # UI at the bottom
+        y_offset_bottom = self.height - 30
+        
+        # Active Fingers and Brush Info
+        active_count = sum(1 for tracker in self.finger_trackers.values() if tracker['drawing_mode'])
+        cv2.putText(frame, f"Active Fingers: {active_count}", (10, y_offset_bottom),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0) if active_count > 0 else (255, 255, 255), 1)
+        y_offset_bottom -= 25
+        
+        cv2.putText(frame, f"Brush Size: {self.brush_size_base}", (10, y_offset_bottom),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        y_offset_bottom -= 25
+        
+        # Pitch, Volume, and Background Info
+        cv2.putText(frame, f"Pitch: {self.current_pitch:.0f}Hz", (10, y_offset_bottom),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        y_offset_bottom -= 25
+        
+        cv2.putText(frame, f"Volume: {self.current_volume:.1f}", (10, y_offset_bottom),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        y_offset_bottom -= 25
+        
+        if self.background_image is not None:
+            bg_status = f"BG: {'ON' if self.background_enabled else 'OFF'} ({self.background_opacity:.1f})"
+            cv2.putText(frame, bg_status, (10, y_offset_bottom),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        (0, 255, 0) if self.background_enabled else (128, 128, 128), 1)
+        else:
+            cv2.putText(frame, "BG: None loaded", (10, y_offset_bottom),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 128, 128), 1)
+
     def cleanup(self):
         self.audio_running = False
         if self.video_writer:
@@ -828,6 +853,10 @@ class AdvancedKineticCanvas:
     def run(self):
         """Main application loop"""
         try:
+            cv2.namedWindow(self.window_name, cv2.WND_PROP_FULLSCREEN)
+            cv2.setWindowProperty(self.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            self.is_fullscreen = True
+
             while True:
                 ret, frame = self.cap.read()
                 if not ret:
@@ -835,34 +864,42 @@ class AdvancedKineticCanvas:
                 
                 frame = cv2.flip(frame, 1)
                 
-                processed_frame = frame.copy()
-                rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+                processed_frame = self.apply_background(frame.copy())
+                
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 hand_results = self.hands.process(rgb_frame)
                 
-                extended_fingers_all_hands = self.process_hands(processed_frame, hand_results)
+                extended_fingers = self.process_hands(processed_frame, hand_results)
                 
-                # Apply the background and blend it with the live video feed
-                if self.background_enabled and self.background_image is not None:
-                    processed_frame = self.apply_background(processed_frame)
-
-                # Now, blend the drawing canvas onto the live video feed (which may have a background)
-                final_display_frame = self.apply_kaleidoscope_effect(self.drawing_canvas)
-                blended_frame = cv2.addWeighted(processed_frame, 1.0, final_display_frame, 0.7, 0)
+                final_display_frame = self.drawing_canvas.copy()
+                if self.kaleidoscope_mode:
+                    final_display_frame = self.apply_kaleidoscope_effect(final_display_frame)
                 
-                self.check_icon_touches(extended_fingers_all_hands)
+                blended_frame = cv2.addWeighted(processed_frame, 1.0, final_display_frame, 1.0, 0)
                 
-                self.draw_icons(blended_frame)
-                
+                self.check_button_touches(extended_fingers)
+                self.draw_buttons(blended_frame)
                 self.draw_ui(blended_frame)
                 
                 if self.recording and self.video_writer:
                     self.video_writer.write(blended_frame)
                 
-                cv2.imshow('Multi-Finger Kinetic Canvas with Background', blended_frame)
+                cv2.imshow(self.window_name, blended_frame)
                 
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
                     break
-        
+                elif key == ord('f'):
+                    if self.is_fullscreen:
+                        cv2.setWindowProperty(self.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+                    else:
+                        cv2.setWindowProperty(self.window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                    self.is_fullscreen = not self.is_fullscreen
+                
+        except Exception as e:
+            print(f"Error in main loop: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             self.cleanup()
 
@@ -875,4 +912,4 @@ if __name__ == "__main__":
         print("Install with: pip install opencv-python mediapipe pyaudio SpeechRecognition numpy tk")
     except Exception as e:
         print(f"Error: {e}")
-        print("Make sure your camera and microphone are connected")
+        print("Make sure your camera and microphone are connected and accessible.")
